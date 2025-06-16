@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Download, Trash2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,10 +19,24 @@ export interface Message {
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiKey, setApiKey] = useState(localStorage.getItem('grok-api-key') || '');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Initialize API key and validate it
+  useEffect(() => {
+    const storedKey = localStorage.getItem('grok-api-key') || '';
+    if (storedKey && storedKey.startsWith('xai-') && storedKey.length >= 20) {
+      setApiKey(storedKey);
+      setShowApiKeyInput(false);
+    } else {
+      // Clear invalid API key
+      localStorage.removeItem('grok-api-key');
+      setApiKey('');
+      setShowApiKeyInput(true);
+    }
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,21 +46,14 @@ const Index = () => {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  // Auto-hide API key input if key is already set
-  useEffect(() => {
-    if (apiKey) {
-      setShowApiKeyInput(false);
-    }
-  }, [apiKey]);
-
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
     
-    if (!apiKey) {
+    if (!apiKey || !apiKey.startsWith('xai-')) {
       setShowApiKeyInput(true);
       toast({
-        title: "API Key Required",
-        description: "Please enter your Grok API key to start chatting.",
+        title: "Valid API Key Required",
+        description: "Please enter a valid Grok API key that starts with 'xai-' from https://console.x.ai",
         variant: "destructive",
       });
       return;
@@ -95,8 +101,10 @@ const Index = () => {
         variant: "destructive",
       });
       
-      // If it's an API key error, show the input again
-      if (errorMessage.includes('API key') || errorMessage.includes('401')) {
+      // If it's an API key error, show the input again and clear the stored key
+      if (errorMessage.includes('API key') || errorMessage.includes('401') || errorMessage.includes('400')) {
+        localStorage.removeItem('grok-api-key');
+        setApiKey('');
         setShowApiKeyInput(true);
       }
     } finally {
@@ -106,8 +114,8 @@ const Index = () => {
 
   const handleApiKeyChange = (key: string) => {
     setApiKey(key);
-    localStorage.setItem('grok-api-key', key);
-    if (key) {
+    if (key && key.startsWith('xai-') && key.length >= 20) {
+      localStorage.setItem('grok-api-key', key);
       setShowApiKeyInput(false);
       toast({
         title: "API Key Saved",
@@ -197,19 +205,19 @@ const Index = () => {
           <div className="max-w-4xl mx-auto px-4 py-4">
             <div className="flex items-center space-x-4">
               <div>
-                <p className="text-blue-200 font-medium">Grok API Key</p>
-                <p className="text-blue-300/80 text-sm">Enter your xAI API key to enable real-time responses</p>
+                <p className="text-blue-200 font-medium">Grok API Key Required</p>
+                <p className="text-blue-300/80 text-sm">Get your API key from <a href="https://console.x.ai" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-200">console.x.ai</a> (must start with "xai-")</p>
               </div>
               <div className="flex-1 max-w-md">
                 <Input
                   type="password"
-                  placeholder="Enter your Grok API key (xai-...)"
+                  placeholder="xai-..."
                   value={apiKey}
                   onChange={(e) => handleApiKeyChange(e.target.value)}
                   className="bg-black/20 border-blue-500/30 text-white placeholder-gray-400"
                 />
               </div>
-              {apiKey && (
+              {apiKey && apiKey.startsWith('xai-') && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -233,7 +241,7 @@ const Index = () => {
               <Bot className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <h3 className="text-xl font-medium mb-2">Welcome to Grok AI Chat</h3>
               <p className="text-gray-500">Start a conversation by typing a message below.</p>
-              {!apiKey && (
+              {(!apiKey || !apiKey.startsWith('xai-')) && (
                 <div className="mt-4">
                   <Button
                     variant="outline"
@@ -258,7 +266,10 @@ const Index = () => {
         {/* Chat Input */}
         <div className="border-t border-white/10 bg-black/20 backdrop-blur-sm">
           <div className="px-4 py-4">
-            <ChatInput onSendMessage={handleSendMessage} disabled={!apiKey || isLoading} />
+            <ChatInput 
+              onSendMessage={handleSendMessage} 
+              disabled={!apiKey || !apiKey.startsWith('xai-') || isLoading} 
+            />
           </div>
         </div>
       </div>

@@ -1,9 +1,19 @@
-
 import { Message } from '@/pages/Index';
 
+const validateGrokApiKey = (apiKey: string): boolean => {
+  // Grok API keys should start with 'xai-' and be at least 20 characters long
+  return apiKey.startsWith('xai-') && apiKey.length >= 20;
+};
+
 export const sendToGrok = async (message: string, apiKey: string): Promise<string> => {
+  // Validate API key format before making the request
+  if (!validateGrokApiKey(apiKey)) {
+    throw new Error('Invalid API key format. Grok API keys should start with "xai-" and be obtained from https://console.x.ai.');
+  }
+
   try {
     console.log('Sending message to Grok AI:', message);
+    console.log('Using API key format:', `${apiKey.substring(0, 8)}...`);
     
     const response = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
@@ -35,8 +45,8 @@ export const sendToGrok = async (message: string, apiKey: string): Promise<strin
       const errorData = await response.text();
       console.error('Grok API error:', errorData);
       
-      if (response.status === 401) {
-        throw new Error('Invalid API key. Please check your Grok API key.');
+      if (response.status === 401 || response.status === 400) {
+        throw new Error('Invalid API key. Please check your Grok API key from https://console.x.ai and ensure it starts with "xai-".');
       } else if (response.status === 429) {
         throw new Error('Rate limit exceeded. Please try again later.');
       } else {
