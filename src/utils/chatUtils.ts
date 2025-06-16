@@ -3,25 +3,8 @@ import { Message } from '@/pages/Index';
 
 export const sendToGrok = async (message: string, apiKey: string): Promise<string> => {
   try {
-    // Note: This is a placeholder implementation as we don't have the actual Grok API endpoint
-    // In a real implementation, you would replace this with the actual Grok API call
+    console.log('Sending message to Grok AI:', message);
     
-    // Simulating API call with a delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-    
-    // Mock responses for demonstration
-    const mockResponses = [
-      "I understand your question about: '" + message + "'. As Grok AI, I can help you with a wide range of topics. What specific aspect would you like me to elaborate on?",
-      "That's an interesting point! " + message + " is something I can definitely help with. Let me provide you with a comprehensive answer...",
-      "Great question! Regarding '" + message + "', here's what I think: This is a complex topic that involves multiple perspectives...",
-      "I appreciate you asking about: " + message + ". Based on my knowledge, I can share several insights that might be helpful...",
-      "Thanks for the question! '" + message + "' is definitely worth exploring. Let me break this down for you in a clear and helpful way..."
-    ];
-    
-    return mockResponses[Math.floor(Math.random() * mockResponses.length)];
-    
-    // Actual Grok API implementation would look like this:
-    /*
     const response = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -32,7 +15,7 @@ export const sendToGrok = async (message: string, apiKey: string): Promise<strin
         messages: [
           {
             role: 'system',
-            content: 'You are Grok, a helpful AI assistant created by xAI.'
+            content: 'You are Grok, a helpful AI assistant created by xAI. Be conversational, witty, and helpful while providing accurate information.'
           },
           {
             role: 'user',
@@ -41,20 +24,42 @@ export const sendToGrok = async (message: string, apiKey: string): Promise<strin
         ],
         model: 'grok-beta',
         stream: false,
-        temperature: 0.7
+        temperature: 0.7,
+        max_tokens: 2000
       }),
     });
 
+    console.log('Grok API response status:', response.status);
+
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.text();
+      console.error('Grok API error:', errorData);
+      
+      if (response.status === 401) {
+        throw new Error('Invalid API key. Please check your Grok API key.');
+      } else if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
+      } else {
+        throw new Error(`API error: ${response.status} - ${errorData}`);
+      }
     }
 
     const data = await response.json();
-    return data.choices[0].message.content;
-    */
+    console.log('Grok API response data:', data);
+    
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      return data.choices[0].message.content;
+    } else {
+      throw new Error('Unexpected response format from Grok API');
+    }
   } catch (error) {
     console.error('Error calling Grok API:', error);
-    throw new Error('Failed to get response from Grok AI');
+    
+    if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error('Failed to get response from Grok AI');
+    }
   }
 };
 

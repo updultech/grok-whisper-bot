@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Download, Trash2 } from 'lucide-react';
+import { Send, Bot, User, Download, Trash2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('grok-api-key') || '');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -32,10 +33,18 @@ const Index = () => {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  // Auto-hide API key input if key is already set
+  useEffect(() => {
+    if (apiKey) {
+      setShowApiKeyInput(false);
+    }
+  }, [apiKey]);
+
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
     
     if (!apiKey) {
+      setShowApiKeyInput(true);
       toast({
         title: "API Key Required",
         description: "Please enter your Grok API key to start chatting.",
@@ -55,7 +64,9 @@ const Index = () => {
     setIsLoading(true);
 
     try {
+      console.log('Sending message to Grok...');
       const response = await sendToGrok(content, apiKey);
+      console.log('Received response from Grok:', response);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -65,13 +76,29 @@ const Index = () => {
       };
 
       setMessages(prev => [...prev, botMessage]);
+      
+      toast({
+        title: "Response received",
+        description: "Grok AI has responded to your message.",
+      });
     } catch (error) {
       console.error('Error sending message to Grok:', error);
+      
+      let errorMessage = "Failed to get response from Grok AI.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to get response from Grok AI. Please check your API key.",
+        description: errorMessage,
         variant: "destructive",
       });
+      
+      // If it's an API key error, show the input again
+      if (errorMessage.includes('API key') || errorMessage.includes('401')) {
+        setShowApiKeyInput(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -80,6 +107,13 @@ const Index = () => {
   const handleApiKeyChange = (key: string) => {
     setApiKey(key);
     localStorage.setItem('grok-api-key', key);
+    if (key) {
+      setShowApiKeyInput(false);
+      toast({
+        title: "API Key Saved",
+        description: "Your Grok API key has been saved locally.",
+      });
+    }
   };
 
   const clearChat = () => {
@@ -126,6 +160,15 @@ const Index = () => {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+                className="border-white/20 text-white hover:bg-white/10"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                API Key
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={exportChat}
                 disabled={messages.length === 0}
                 className="border-white/20 text-white hover:bg-white/10"
@@ -148,24 +191,34 @@ const Index = () => {
         </div>
       </div>
 
-      {/* API Key Input (if not set) */}
-      {!apiKey && (
-        <div className="bg-yellow-900/20 border-y border-yellow-500/20">
+      {/* API Key Input */}
+      {showApiKeyInput && (
+        <div className="bg-blue-900/20 border-y border-blue-500/20">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <div className="flex items-center space-x-4">
               <div>
-                <p className="text-yellow-200 font-medium">API Key Required</p>
-                <p className="text-yellow-300/80 text-sm">Enter your Grok API key to start chatting</p>
+                <p className="text-blue-200 font-medium">Grok API Key</p>
+                <p className="text-blue-300/80 text-sm">Enter your xAI API key to enable real-time responses</p>
               </div>
               <div className="flex-1 max-w-md">
                 <Input
                   type="password"
-                  placeholder="Enter your Grok API key"
+                  placeholder="Enter your Grok API key (xai-...)"
                   value={apiKey}
                   onChange={(e) => handleApiKeyChange(e.target.value)}
-                  className="bg-black/20 border-yellow-500/30 text-white placeholder-gray-400"
+                  className="bg-black/20 border-blue-500/30 text-white placeholder-gray-400"
                 />
               </div>
+              {apiKey && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowApiKeyInput(false)}
+                  className="border-blue-500/30 text-blue-200 hover:bg-blue-500/10"
+                >
+                  Hide
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -180,6 +233,17 @@ const Index = () => {
               <Bot className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <h3 className="text-xl font-medium mb-2">Welcome to Grok AI Chat</h3>
               <p className="text-gray-500">Start a conversation by typing a message below.</p>
+              {!apiKey && (
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowApiKeyInput(true)}
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    Configure API Key
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             messages.map((message) => (
