@@ -33,7 +33,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Ask Grok anything..."
+          placeholder="Ask Gemini anything..."
           disabled={disabled}
           className="min-h-[50px] max-h-32 resize-none bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder-gray-400 focus:border-blue-400 focus:ring-blue-400/20"
         />

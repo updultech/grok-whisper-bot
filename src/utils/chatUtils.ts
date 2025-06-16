@@ -1,52 +1,53 @@
+
 import { Message } from '@/pages/Index';
 
-const validateGrokApiKey = (apiKey: string): boolean => {
-  // Grok API keys should start with 'xai-' and be at least 20 characters long
-  return apiKey.startsWith('xai-') && apiKey.length >= 20;
+const validateGeminiApiKey = (apiKey: string): boolean => {
+  // Gemini API keys should be at least 20 characters long
+  return apiKey.length >= 20;
 };
 
-export const sendToGrok = async (message: string, apiKey: string): Promise<string> => {
+export const sendToGemini = async (message: string, apiKey: string): Promise<string> => {
   // Validate API key format before making the request
-  if (!validateGrokApiKey(apiKey)) {
-    throw new Error('Invalid API key format. Grok API keys should start with "xai-" and be obtained from https://console.x.ai.');
+  if (!validateGeminiApiKey(apiKey)) {
+    throw new Error('Invalid API key format. Please provide a valid Gemini API key from https://aistudio.google.com/app/apikey.');
   }
 
   try {
-    console.log('Sending message to Grok AI:', message);
+    console.log('Sending message to Gemini AI:', message);
     console.log('Using API key format:', `${apiKey.substring(0, 8)}...`);
     
-    const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        messages: [
+        contents: [
           {
-            role: 'system',
-            content: 'You are Grok, a helpful AI assistant created by xAI. Be conversational, witty, and helpful while providing accurate information.'
-          },
-          {
-            role: 'user',
-            content: message
+            parts: [
+              {
+                text: message
+              }
+            ]
           }
         ],
-        model: 'grok-beta',
-        stream: false,
-        temperature: 0.7,
-        max_tokens: 2000
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        }
       }),
     });
 
-    console.log('Grok API response status:', response.status);
+    console.log('Gemini API response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('Grok API error:', errorData);
+      console.error('Gemini API error:', errorData);
       
       if (response.status === 401 || response.status === 400) {
-        throw new Error('Invalid API key. Please check your Grok API key from https://console.x.ai and ensure it starts with "xai-".');
+        throw new Error('Invalid API key. Please check your Gemini API key from https://aistudio.google.com/app/apikey.');
       } else if (response.status === 429) {
         throw new Error('Rate limit exceeded. Please try again later.');
       } else {
@@ -55,20 +56,20 @@ export const sendToGrok = async (message: string, apiKey: string): Promise<strin
     }
 
     const data = await response.json();
-    console.log('Grok API response data:', data);
+    console.log('Gemini API response data:', data);
     
-    if (data.choices && data.choices[0] && data.choices[0].message) {
-      return data.choices[0].message.content;
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+      return data.candidates[0].content.parts[0].text;
     } else {
-      throw new Error('Unexpected response format from Grok API');
+      throw new Error('Unexpected response format from Gemini API');
     }
   } catch (error) {
-    console.error('Error calling Grok API:', error);
+    console.error('Error calling Gemini API:', error);
     
     if (error instanceof Error) {
       throw error;
     } else {
-      throw new Error('Failed to get response from Grok AI');
+      throw new Error('Failed to get response from Gemini AI');
     }
   }
 };
@@ -76,7 +77,7 @@ export const sendToGrok = async (message: string, apiKey: string): Promise<strin
 export const exportChatHistory = (messages: Message[]) => {
   const chatHistory = messages.map(message => {
     const timestamp = message.timestamp.toLocaleString();
-    const sender = message.sender === 'user' ? 'You' : 'Grok AI';
+    const sender = message.sender === 'user' ? 'You' : 'Gemini AI';
     return `[${timestamp}] ${sender}: ${message.content}`;
   }).join('\n\n');
 
@@ -84,7 +85,7 @@ export const exportChatHistory = (messages: Message[]) => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `grok-chat-history-${new Date().toISOString().split('T')[0]}.txt`;
+  a.download = `gemini-chat-history-${new Date().toISOString().split('T')[0]}.txt`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

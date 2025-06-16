@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Download, Trash2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import ChatMessage from '@/components/ChatMessage';
 import LoadingMessage from '@/components/LoadingMessage';
 import ChatInput from '@/components/ChatInput';
-import { sendToGrok, exportChatHistory } from '@/utils/chatUtils';
+import { sendToGemini, exportChatHistory } from '@/utils/chatUtils';
 
 export interface Message {
   id: string;
@@ -26,13 +27,13 @@ const Index = () => {
 
   // Initialize API key and validate it
   useEffect(() => {
-    const storedKey = localStorage.getItem('grok-api-key') || '';
-    if (storedKey && storedKey.startsWith('xai-') && storedKey.length >= 20) {
+    const storedKey = localStorage.getItem('gemini-api-key') || '';
+    if (storedKey && storedKey.length >= 20) {
       setApiKey(storedKey);
       setShowApiKeyInput(false);
     } else {
       // Clear invalid API key
-      localStorage.removeItem('grok-api-key');
+      localStorage.removeItem('gemini-api-key');
       setApiKey('');
       setShowApiKeyInput(true);
     }
@@ -49,11 +50,11 @@ const Index = () => {
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
     
-    if (!apiKey || !apiKey.startsWith('xai-')) {
+    if (!apiKey || apiKey.length < 20) {
       setShowApiKeyInput(true);
       toast({
         title: "Valid API Key Required",
-        description: "Please enter a valid Grok API key that starts with 'xai-' from https://console.x.ai",
+        description: "Please enter a valid Gemini API key from https://aistudio.google.com/app/apikey",
         variant: "destructive",
       });
       return;
@@ -70,9 +71,9 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      console.log('Sending message to Grok...');
-      const response = await sendToGrok(content, apiKey);
-      console.log('Received response from Grok:', response);
+      console.log('Sending message to Gemini...');
+      const response = await sendToGemini(content, apiKey);
+      console.log('Received response from Gemini:', response);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -85,12 +86,12 @@ const Index = () => {
       
       toast({
         title: "Response received",
-        description: "Grok AI has responded to your message.",
+        description: "Gemini AI has responded to your message.",
       });
     } catch (error) {
-      console.error('Error sending message to Grok:', error);
+      console.error('Error sending message to Gemini:', error);
       
-      let errorMessage = "Failed to get response from Grok AI.";
+      let errorMessage = "Failed to get response from Gemini AI.";
       if (error instanceof Error) {
         errorMessage = error.message;
       }
@@ -103,7 +104,7 @@ const Index = () => {
       
       // If it's an API key error, show the input again and clear the stored key
       if (errorMessage.includes('API key') || errorMessage.includes('401') || errorMessage.includes('400')) {
-        localStorage.removeItem('grok-api-key');
+        localStorage.removeItem('gemini-api-key');
         setApiKey('');
         setShowApiKeyInput(true);
       }
@@ -114,12 +115,12 @@ const Index = () => {
 
   const handleApiKeyChange = (key: string) => {
     setApiKey(key);
-    if (key && key.startsWith('xai-') && key.length >= 20) {
-      localStorage.setItem('grok-api-key', key);
+    if (key && key.length >= 20) {
+      localStorage.setItem('gemini-api-key', key);
       setShowApiKeyInput(false);
       toast({
         title: "API Key Saved",
-        description: "Your Grok API key has been saved locally.",
+        description: "Your Gemini API key has been saved locally.",
       });
     }
   };
@@ -159,8 +160,8 @@ const Index = () => {
                 <Bot className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Grok AI Chat</h1>
-                <p className="text-sm text-gray-300">Powered by xAI</p>
+                <h1 className="text-xl font-bold text-white">Gemini AI Chat</h1>
+                <p className="text-sm text-gray-300">Powered by Google</p>
               </div>
             </div>
             
@@ -205,19 +206,19 @@ const Index = () => {
           <div className="max-w-4xl mx-auto px-4 py-4">
             <div className="flex items-center space-x-4">
               <div>
-                <p className="text-blue-200 font-medium">Grok API Key Required</p>
-                <p className="text-blue-300/80 text-sm">Get your API key from <a href="https://console.x.ai" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-200">console.x.ai</a> (must start with "xai-")</p>
+                <p className="text-blue-200 font-medium">Gemini API Key Required</p>
+                <p className="text-blue-300/80 text-sm">Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-200">Google AI Studio</a></p>
               </div>
               <div className="flex-1 max-w-md">
                 <Input
                   type="password"
-                  placeholder="xai-..."
+                  placeholder="Enter your Gemini API key..."
                   value={apiKey}
                   onChange={(e) => handleApiKeyChange(e.target.value)}
                   className="bg-black/20 border-blue-500/30 text-white placeholder-gray-400"
                 />
               </div>
-              {apiKey && apiKey.startsWith('xai-') && (
+              {apiKey && apiKey.length >= 20 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -239,9 +240,9 @@ const Index = () => {
           {messages.length === 0 ? (
             <div className="text-center text-gray-400 mt-20">
               <Bot className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <h3 className="text-xl font-medium mb-2">Welcome to Grok AI Chat</h3>
+              <h3 className="text-xl font-medium mb-2">Welcome to Gemini AI Chat</h3>
               <p className="text-gray-500">Start a conversation by typing a message below.</p>
-              {(!apiKey || !apiKey.startsWith('xai-')) && (
+              {(!apiKey || apiKey.length < 20) && (
                 <div className="mt-4">
                   <Button
                     variant="outline"
@@ -268,7 +269,7 @@ const Index = () => {
           <div className="px-4 py-4">
             <ChatInput 
               onSendMessage={handleSendMessage} 
-              disabled={!apiKey || !apiKey.startsWith('xai-') || isLoading} 
+              disabled={!apiKey || apiKey.length < 20 || isLoading} 
             />
           </div>
         </div>

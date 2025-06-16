@@ -19,7 +19,7 @@ const LoadingMessage: React.FC = () => {
               <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
               <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
             </div>
-            <span className="text-sm text-gray-300">Grok is thinking...</span>
+            <span className="text-sm text-gray-300">Gemini is thinking...</span>
           </div>
         </div>
       </div>
