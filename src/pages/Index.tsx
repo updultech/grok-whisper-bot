@@ -1,9 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Download, Trash2, Settings } from 'lucide-react';
+import { Send, Bot, User, Download, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import ChatMessage from '@/components/ChatMessage';
 import LoadingMessage from '@/components/LoadingMessage';
@@ -20,24 +19,8 @@ export interface Message {
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-
-  // Initialize API key and validate it
-  useEffect(() => {
-    const storedKey = localStorage.getItem('gemini-api-key') || '';
-    if (storedKey && storedKey.length >= 20) {
-      setApiKey(storedKey);
-      setShowApiKeyInput(false);
-    } else {
-      // Clear invalid API key
-      localStorage.removeItem('gemini-api-key');
-      setApiKey('');
-      setShowApiKeyInput(true);
-    }
-  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -49,16 +32,6 @@ const Index = () => {
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
-    
-    if (!apiKey || apiKey.length < 20) {
-      setShowApiKeyInput(true);
-      toast({
-        title: "Valid API Key Required",
-        description: "Please enter a valid Gemini API key from https://aistudio.google.com/app/apikey",
-        variant: "destructive",
-      });
-      return;
-    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -72,7 +45,7 @@ const Index = () => {
 
     try {
       console.log('Sending message to Gemini...');
-      const response = await sendToGemini(content, apiKey);
+      const response = await sendToGemini(content);
       console.log('Received response from Gemini:', response);
       
       const botMessage: Message = {
@@ -101,27 +74,8 @@ const Index = () => {
         description: errorMessage,
         variant: "destructive",
       });
-      
-      // If it's an API key error, show the input again and clear the stored key
-      if (errorMessage.includes('API key') || errorMessage.includes('401') || errorMessage.includes('400')) {
-        localStorage.removeItem('gemini-api-key');
-        setApiKey('');
-        setShowApiKeyInput(true);
-      }
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleApiKeyChange = (key: string) => {
-    setApiKey(key);
-    if (key && key.length >= 20) {
-      localStorage.setItem('gemini-api-key', key);
-      setShowApiKeyInput(false);
-      toast({
-        title: "API Key Saved",
-        description: "Your Gemini API key has been saved locally.",
-      });
     }
   };
 
@@ -169,15 +123,6 @@ const Index = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-                className="border-white/20 text-white hover:bg-white/10"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                API Key
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 onClick={exportChat}
                 disabled={messages.length === 0}
                 className="border-white/20 text-white hover:bg-white/10"
@@ -200,39 +145,6 @@ const Index = () => {
         </div>
       </div>
 
-      {/* API Key Input */}
-      {showApiKeyInput && (
-        <div className="bg-blue-900/20 border-y border-blue-500/20">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <div className="flex items-center space-x-4">
-              <div>
-                <p className="text-blue-200 font-medium">Gemini API Key Required</p>
-                <p className="text-blue-300/80 text-sm">Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-200">Google AI Studio</a></p>
-              </div>
-              <div className="flex-1 max-w-md">
-                <Input
-                  type="password"
-                  placeholder="Enter your Gemini API key..."
-                  value={apiKey}
-                  onChange={(e) => handleApiKeyChange(e.target.value)}
-                  className="bg-black/20 border-blue-500/30 text-white placeholder-gray-400"
-                />
-              </div>
-              {apiKey && apiKey.length >= 20 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowApiKeyInput(false)}
-                  className="border-blue-500/30 text-blue-200 hover:bg-blue-500/10"
-                >
-                  Hide
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Chat Container */}
       <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full">
         {/* Messages */}
@@ -242,17 +154,6 @@ const Index = () => {
               <Bot className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <h3 className="text-xl font-medium mb-2">Welcome to Gemini AI Chat</h3>
               <p className="text-gray-500">Start a conversation by typing a message below.</p>
-              {(!apiKey || apiKey.length < 20) && (
-                <div className="mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowApiKeyInput(true)}
-                    className="border-white/20 text-white hover:bg-white/10"
-                  >
-                    Configure API Key
-                  </Button>
-                </div>
-              )}
             </div>
           ) : (
             messages.map((message) => (
@@ -269,7 +170,7 @@ const Index = () => {
           <div className="px-4 py-4">
             <ChatInput 
               onSendMessage={handleSendMessage} 
-              disabled={!apiKey || apiKey.length < 20 || isLoading} 
+              disabled={isLoading} 
             />
           </div>
         </div>

@@ -1,70 +1,33 @@
 
 import { Message } from '@/pages/Index';
+import { supabase } from '@/integrations/supabase/client';
 
-const validateGeminiApiKey = (apiKey: string): boolean => {
-  // Gemini API keys should be at least 20 characters long
-  return apiKey.length >= 20;
-};
-
-export const sendToGemini = async (message: string, apiKey: string): Promise<string> => {
-  // Validate API key format before making the request
-  if (!validateGeminiApiKey(apiKey)) {
-    throw new Error('Invalid API key format. Please provide a valid Gemini API key from https://aistudio.google.com/app/apikey.');
-  }
-
+export const sendToGemini = async (message: string): Promise<string> => {
   try {
-    console.log('Sending message to Gemini AI:', message);
-    console.log('Using API key format:', `${apiKey.substring(0, 8)}...`);
+    console.log('Sending message to Gemini via Supabase function:', message);
     
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: message
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-        }
-      }),
+    const { data, error } = await supabase.functions.invoke('gemini-chat', {
+      body: { message }
     });
 
-    console.log('Gemini API response status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Gemini API error:', errorData);
-      
-      if (response.status === 401 || response.status === 400) {
-        throw new Error('Invalid API key. Please check your Gemini API key from https://aistudio.google.com/app/apikey.');
-      } else if (response.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
-      } else {
-        throw new Error(`API error: ${response.status} - ${errorData}`);
-      }
+    if (error) {
+      console.error('Supabase function error:', error);
+      throw new Error(error.message || 'Failed to get response from Gemini AI');
     }
 
-    const data = await response.json();
-    console.log('Gemini API response data:', data);
-    
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-      return data.candidates[0].content.parts[0].text;
-    } else {
-      throw new Error('Unexpected response format from Gemini API');
+    if (data?.error) {
+      console.error('Gemini API error:', data.error);
+      throw new Error(data.error);
     }
+
+    if (!data?.response) {
+      throw new Error('No response received from Gemini AI');
+    }
+
+    console.log('Received response from Gemini:', data.response);
+    return data.response;
   } catch (error) {
-    console.error('Error calling Gemini API:', error);
+    console.error('Error calling Gemini via Supabase:', error);
     
     if (error instanceof Error) {
       throw error;
