@@ -12,6 +12,12 @@ export const sendToGemini = async (message: string): Promise<string> => {
 
     if (error) {
       console.error('Supabase function error:', error);
+      
+      // Handle specific Supabase connection errors
+      if (error.message?.includes('not configured')) {
+        throw new Error('Supabase connection not properly configured. Please check your integration setup.');
+      }
+      
       throw new Error(error.message || 'Failed to get response from Gemini AI');
     }
 

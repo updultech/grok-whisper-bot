@@ -8,11 +8,21 @@ console.log('Supabase URL:', supabaseUrl ? 'Set' : 'Missing')
 console.log('Supabase Anon Key:', supabaseAnonKey ? 'Set' : 'Missing')
 console.log('All env vars:', import.meta.env)
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables:')
-  console.error('VITE_SUPABASE_URL:', supabaseUrl)
-  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Present' : 'Missing')
-  throw new Error('Missing Supabase environment variables. Please ensure your Supabase connection is properly configured.')
+// Create a fallback client that will show meaningful errors
+let supabase: any = null
+
+if (supabaseUrl && supabaseAnonKey) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
+} else {
+  console.warn('Supabase environment variables not found. Creating fallback client.')
+  // Create a mock client that will provide helpful error messages
+  supabase = {
+    functions: {
+      invoke: () => {
+        return Promise.reject(new Error('Supabase connection not configured. Please ensure your Supabase integration is properly set up.'))
+      }
+    }
+  }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export { supabase }
